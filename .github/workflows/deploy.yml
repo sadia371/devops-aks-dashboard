@@ -1,4 +1,4 @@
-name: CI-CD to Azure AKS
+name: CI-CD to Azure App Service
 
 on:
   push:
@@ -8,8 +8,7 @@ on:
 env:
   ACR_NAME: sadiadevopsacr786
   IMAGE_NAME: dashboard-app
-  RESOURCE_GROUP: devops-rg
-  CLUSTER_NAME: devops-aks
+  APP_NAME: dashboard-app-service
 
 jobs:
   build-and-deploy:
@@ -20,7 +19,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Login to Azure
+      # 2. Azure Login
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -35,18 +34,14 @@ jobs:
         run: |
           docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:latest .
 
-      # 5. Push Image to ACR
+      # 5. Push Docker Image
       - name: Push Docker Image
         run: |
           docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:latest
 
-      # 6. Get AKS credentials
-      - name: Get AKS credentials
-        run: |
-          az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
-
-      # 7. Deploy to AKS
-      - name: Deploy to Kubernetes
-        run: |
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
+      # 6. Deploy to Azure Web App
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.APP_NAME }}
+          images: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
